@@ -1,78 +1,96 @@
 # 23CSE301 Machine Learning Capstone Project
 
-## Project Description & Problem Statement
-[Insert your specific problem statement here. Explain the goal of predicting, classifying, or clustering the assigned dataset.][cite: 1]
+This project compares supervised machine learning models for two prediction problems:
 
-This repository contains an end-to-end Machine Learning pipeline encompassing three core tracks:
-* **Regression:** Evaluates 10 algorithms to predict a diamond's price in US dollars from its physical measurements and quality characteristics.
-* **Classification:** Evaluates 10 algorithms for categorical prediction.
-* **Clustering:** Evaluates K-Means and Hierarchical clustering for unsupervised pattern discovery.
+* **Regression:** Estimate a diamond's price from its physical measurements and quality characteristics.
+* **Classification:** Classify telescope observations as gamma-ray signal (`g`) or hadron background (`h`).
+
+The implemented work is contained in two Jupyter notebooks. Clustering and a standalone GUI are not currently implemented in this repository.
 
 ## Team Members
 
-| 👤 Name | 🎓 Roll Number |
-| :--- | :---: |
-| DEVIKA ANIL KUMAR | CB.SC.U4CSE24215 |
-| H DHARSHAN | CB.SC.U4CSE24223 |
-| NAVEEN SS | CB.SC.U4CSE24264 |
+| Name              |   Roll Number   |
+| :---------------- | :--------------: |
+| Devika Anil Kumar | CB.SC.U4CSE24215 |
+| H Dharshan        | CB.SC.U4CSE24223 |
+| Naveen S S       | CB.SC.U4CSE24264 |
 
-## Dataset Description
+## Project Structure
 
-### Regression Dataset: Diamond Price Prediction
+```text
+.
+├── data/
+│   ├── diamond.csv
+│   └── telescope_data.csv
+├── models/
+│   ├── regression.ipynb
+│   └── classification.ipynb
+├── app/              # Reserved for future application code
+├── requirements.txt
+└── README.md
+```
 
-The regression track uses the [Diamond Price Prediction Dataset](https://www.kaggle.com/datasets/ronil8/diamond-price-prediction-dataset) from Kaggle. The local dataset is stored at `data/diamond.csv` and contains 53,940 diamond records with no missing values.
+## Datasets
 
-* **Input features:**
-  * **Carat:** Weight of the diamond.
-  * **Cut:** Quality of the cut (`Fair`, `Good`, `Very Good`, `Premium`, or `Ideal`).
-  * **Color:** Diamond color grade, ranging from `D` to `J`.
-  * **Clarity:** Diamond clarity grade.
-  * **Depth:** Total depth percentage.
-  * **Table:** Width of the diamond's top facet relative to its widest point.
-  * **X, Y, and Z:** Length, width, and depth dimensions, respectively.
-* **Target variable:** **Price (in US dollars)**.
-* **Problem statement:** Build and compare regression models that estimate a diamond's price using its carat, quality grades, proportions, and physical dimensions.
+### Diamond Price Regression
 
+The local dataset is `data/diamond.csv`. It contains 53,940 diamond records with the following columns:
 
-## Environment Setup & Requirements
-To run this project, ensure you have Python 3 installed along with the following primary libraries:
-* scikit-learn
-* Pandas
-* NumPy
-* Matplotlib
-* Seaborn
+* **Features:** carat, cut, color, clarity, depth, table, x, y, and z.
+* **Target:** price in US dollars.
+* **Cleaning:** rows with zero or negative `x`, `y`, or `z` measurements are removed.
+* **Preprocessing:** median imputation and standardisation for numeric columns; most-frequent imputation and one-hot encoding for categorical columns.
+* **Split:** 80% training and 20% test data, using `random_state=42`.
 
-Install all dependencies using the provided requirements file:
-`pip install -r requirements.txt`
+The notebook compares ten regressors: Multiple Linear Regression, Ridge, Lasso, ElasticNet, Polynomial Regression, Decision Tree, Random Forest, Gradient Boosting, Support Vector Regression, and K-Nearest Neighbours Regression.
 
-## How to Run the Project
-1. Clone this repository to your local machine.
-2. Ensure the raw dataset files are placed in the `data/` directory (or run the provided download script).
-3. Navigate to the `notebooks/` directory.
-4. Run the Jupyter notebooks top-to-bottom: `regression.ipynb`, `classification.ipynb`, and `clustering.ipynb`.
-5. Optional: Run the GUI application located in the `app/` directory.
+Source: [Diamond Price Prediction Dataset](https://www.kaggle.com/datasets/ronil8/diamond-price-prediction-dataset).
 
-## Results Summary
+### Telescope Classification
 
-### Regression Track
+The local dataset is `data/telescope_data.csv`. It contains 18,905 observations and ten numeric telescope measurements: `fLength`, `fWidth`, `fSize`, `fConc`, `fConc1`, `fAsym`, `fM3Long`, `fM3Trans`, `fAlpha`, and `fDist`.
 
-The models are evaluated on their ability to predict `Price(in US dollars)`. Results will be compared using $R^2$, RMSE, and MAE, then ranked by test-set $R^2$.
+* **Target:** `class`, where `g` is gamma signal and `h` is hadron background.
+* **Feature engineering:** adds `length_width_ratio` from `fLength / fWidth`.
+* **Preprocessing:** median imputation and standardisation.
+* **Split:** stratified 80/20 train/test split, using `random_state=42`.
+* **Models:** Logistic Regression, K-Nearest Neighbours, Gaussian Naive Bayes, Decision Tree, and Support Vector Machine with an RBF kernel.
+* **Metrics:** accuracy, weighted precision, weighted recall, weighted F1 score, classification reports, and confusion matrices.
 
-| Model | $R^2$ Score | RMSE | MAE |
-|---|---|---|---|
-| [Best Model] | [Value] | [Value] | [Value] |
+## Setup
 
-*(This table will summarize all 10 trained algorithms ranked by $R^2$ on the test split.)*
+Use Python 3. Install the dependencies from the project root:
 
-### Classification Track
-| Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
-|---|---|---|---|---|---|
-| [Best Model] | [Value] | [Value] | [Value] | [Value] | [Value] |
-*(Table must consolidate all 10 algorithms from Part A and Part B)*[cite: 1]
+```bash
+python -m venv .venv
+source .venv/bin/activate       # Linux/macOS
+python -m pip install -r requirements.txt
+```
 
-### Clustering Track
-| Model | Silhouette Score | Davies-Bouldin Index | Calinski-Harabasz Index |
-|---|---|---|---|
-| K-Means | [Value] | [Value] | [Value] |
-| Hierarchical | [Value] | [Value] | [Value] |
+The required packages are NumPy, pandas, scikit-learn, Matplotlib, and Seaborn.
 
+## Run The Notebooks
+
+From the project root, start Jupyter or open the notebooks in VS Code:
+
+```bash
+python -m pip install jupyter
+jupyter notebook
+```
+
+Run the notebooks top-to-bottom in this order:
+
+1. `models/regression.ipynb`
+2. `models/classification.ipynb`
+
+Both notebooks use relative paths to load files from `data/`. Run all cells again when using a fresh kernel so that the displayed results match the current environment.
+
+## Evaluation
+
+### Regression
+
+Regression results are compared using $R^2$, root mean squared error (RMSE), and mean absolute error (MAE). The final comparison is ranked by test-set $R^2$.
+
+### Classification
+
+Classification results are compared using accuracy, weighted precision, weighted recall, and weighted F1 score. Each model also produces a classification report and confusion matrix for the `g` and `h` classes.
