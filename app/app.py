@@ -1,13 +1,15 @@
-"""ML Capstone bonus app: regression + classification.
+"""ML Capstone bonus app: regression + classification + clustering.
 
 Tab 1 loads a lightweight diamond-price RandomForest (joblib).
 Tab 2 loads the selected telescope Gradient Boosting classifier (joblib).
+Tab 3 assigns an exoplanet to a K-Means taxonomic cluster (joblib).
 Run: streamlit run app/app.py (from project root).
 """
 
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -40,9 +42,33 @@ TELESCOPE_DEFAULTS = {
     "fDist": 191.83,
 }
 
+EXO_FEATURES = [
+    "pl_rade",
+    "pl_bmasse",
+    "pl_orbper",
+    "pl_orbsmax",
+    "pl_orbeccen",
+    "pl_eqt",
+    "st_teff",
+    "st_mass",
+    "st_rad",
+]
+EXO_DEFAULTS = {
+    "pl_rade": 2.86,
+    "pl_bmasse": 9.32,
+    "pl_orbper": 10.64,
+    "pl_orbsmax": 0.1027,
+    "pl_orbeccen": 0.0,
+    "pl_eqt": 758.0,
+    "st_teff": 5544.0,
+    "st_mass": 0.94,
+    "st_rad": 0.95,
+}
+
 MODELS_DIR = Path(__file__).resolve().parent.parent / "models"
 REGRESSION_PATH = MODELS_DIR / "diamond_rf_small.joblib"
 CLASSIFICATION_PATH = MODELS_DIR / "telescope_gb.joblib"
+CLUSTERING_PATH = MODELS_DIR / "exoplanet_kmeans.joblib"
 
 
 @st.cache_resource
@@ -55,11 +81,36 @@ def load_classification_model():
     return joblib.load(CLASSIFICATION_PATH)
 
 
-st.set_page_config(page_title="ML Capstone App")
-st.title("ML Capstone — Bonus App")
+@st.cache_resource
+def load_clustering_bundle():
+    return joblib.load(CLUSTERING_PATH)
 
-tab_reg, tab_clf = st.tabs(
-    ["Diamond Price (Regression)", "Telescope Signal (Classification)"]
+
+def predict_exoplanet_cluster(bundle, values):
+    """Replicate notebook preprocessing: median-fill → log10 → scale → K-Means."""
+    row = pd.DataFrame([values], columns=bundle["features"])
+    row = row.fillna(pd.Series(bundle["medians"]))
+    logged = row.copy()
+    for col in bundle["log_features"]:
+        if float(logged[col].iloc[0]) <= 0:
+            raise ValueError(f"{col} must be positive (log10 preprocessing).")
+        logged[col] = np.log10(logged[col])
+    scaled = bundle["scaler"].transform(logged)
+    km = bundle["kmeans"]
+    label = int(km.predict(scaled)[0])
+    dists = [float(d) for d in np.linalg.norm(km.cluster_centers_ - scaled[0], axis=1)]
+    return label, bundle["taxonomy"][label], dists
+
+
+st.set_page_config(page_title="ML Capstone App")
+st.title("ML Capstone App")
+
+tab_reg, tab_clf, tab_clu = st.tabs(
+    [
+        "Diamond Price (Regression)",
+        "Telescope Signal (Classification)",
+        "Exoplanet Cluster (Clustering)",
+    ]
 )
 
 with tab_reg:
@@ -145,6 +196,36 @@ with tab_clf:
     else:
         st.info("Adjust the 10 measurements and click **Classify observation**.")
 
+with tab_clu:
+    st.caption(
+        "Notebook K-Means (k=3) on all 9 numeric features: median-fill → log10 "
+        "(all but `pl_orbeccen`, `st_teff`) → StandardScaler. "
+        "Single-point assignment is illustrative (no Silhouette for n=1)."
+    )
+    exo_vals = {}
+    ecols = st.columns(3)
+    for i, feat in enumerate(EXO_FEATURES):
+        with ecols[i % 3]:
+            exo_vals[feat] = st.number_input(
+                feat, value=float(EXO_DEFAULTS[feat]), format="%.4f", key=f"exo_{feat}"
+            )
+    if st.button("Assign cluster", type="primary", key="clu_btn"):
+        try:
+            bundle = load_clustering_bundle()
+            label, taxonomy, dists = predict_exoplanet_cluster(bundle, exo_vals)
+            st.success(f"Cluster **{label}** — {taxonomy}")
+            st.caption(
+                "Distances to centroids: "
+                + ", ".join(f"C{c}: {d:.2f}" for c, d in enumerate(dists))
+                + ". Closest wins."
+            )
+        except ValueError as exc:
+            st.error(str(exc))
+    else:
+        st.info(
+            "Adjust the 9 features (medians prefilled) and click **Assign cluster**."
+        )
+
 with st.sidebar:
     st.header("About")
     st.write(
@@ -154,4 +235,8 @@ with st.sidebar:
     st.write(
         "Classification: `models/telescope_gb.joblib` — median impute + Gradient Boosting "
         "(500, depth 4, lr 0.1). Data: `data/telescope_data.csv`, stratified 80/20, seed 42."
+    )
+    st.write(
+        "Clustering: `models/exoplanet_kmeans.joblib` — median-fill → log10 → scaler + "
+        "K-Means k=3. Data: `data/exoplanets.csv` (6,445 rows, 9 numeric + pl_name ID)."
     )
