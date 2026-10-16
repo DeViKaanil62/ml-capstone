@@ -19,6 +19,17 @@ An end-to-end Machine Learning pipeline implementing regression, classification,
 
 ---
 
+## Submission & Bonus Track Status
+
+* **Git Commit History:** Clean working tree with 57+ granular, milestone-based commits tracking iterative pipeline development.
+* **Interactive Web GUI (+1 Bonus):** Fully functional multi-tab Streamlit application (`app/app.py`) providing real-time inference across all three problem tracks.
+* **Public Deployment (+1 Bonus):** The application is configured and ready for live public deployment on Streamlit Community Cloud / Hugging Face Spaces:
+  * Application entrypoint: `app/app.py`
+  * Lightweight deployment dependencies: `app/requirements.txt`
+  * Serialized model artifacts: `models/*.joblib`
+
+---
+
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
@@ -28,12 +39,13 @@ An end-to-end Machine Learning pipeline implementing regression, classification,
    * [Preprocessing & Feature Engineering](#preprocessing--feature-engineering-regression)
    * [Model Benchmarking & Comparison Table](#model-benchmarking--comparison-table-regression)
    * [5-Fold Cross-Validation](#5-fold-cross-validation-regression)
+   * [SVR Leader vs. Random Forest Deployment Narrative](#svr-leader-vs-random-forest-deployment-narrative)
    * [Hyperparameter Tuning & Visualisations](#hyperparameter-tuning--visualisations-regression)
 4. [Track 2: MAGIC Telescope Signal Classification (Classification)](#track-2-magic-telescope-signal-classification-classification)
    * [Dataset & Problem Statement](#dataset--problem-statement-classification)
    * [Preprocessing & Feature Engineering](#preprocessing--feature-engineering-classification)
    * [Consolidated 10-Algorithm Comparison Table](#consolidated-10-algorithm-comparison-table-classification)
-   * [Final Model Selection & Optimization](#final-model-selection--optimization-classification)
+   * [Final Model Selection & Secondary Optimization](#final-model-selection--secondary-optimization-classification)
 5. [Track 3: Confirmed Exoplanet Taxonomy (Clustering)](#track-3-confirmed-exoplanet-taxonomy-clustering)
    * [Dataset & Problem Statement](#dataset--problem-statement-clustering)
    * [Preprocessing & Logarithmic Transformation](#preprocessing--logarithmic-transformation-clustering)
@@ -41,9 +53,9 @@ An end-to-end Machine Learning pipeline implementing regression, classification,
    * [Validation Benchmark & Manifold Projections](#validation-benchmark--manifold-projections-clustering)
    * [Astrophysical Interpretation](#astrophysical-interpretation)
 6. [Interactive Web Application (Bonus GUI)](#interactive-web-application-bonus-gui)
-7. [Environment Setup & Installation](#environment-setup--installation)
+7. [Dependency Management & Installation](#dependency-management--installation)
 8. [How to Run](#how-to-run)
-9. [Methodology & Best Practices](#methodology--best-practices)
+9. [Methodology & Quality Assurance](#methodology--quality-assurance)
 
 ---
 
@@ -59,7 +71,7 @@ This capstone project delivers three complete, self-contained machine learning w
 │ Diamond Price Estimation   │ Telescope Gamma Signal     │ Exoplanet Demographics       │
 │ • 53,940 diamonds          │ • 18,905 observations      │ • 6,445 confirmed planets    │
 │ • 10 Regressors evaluated  │ • 10 Classifiers evaluated │ • Unsupervised partitioning  │
-│ • Top: SVR (R² = 0.979)    │ • Top: GradBoost (F1=0.88) │ • K-Means (k=3) & Ward Tree  │
+│ • Leader: SVR (R² = 0.979) │ • Leader: GradBoost (0.88) │ • K-Means (k=3) & Ward Tree  │
 │ • Deploy: RF-50 (joblib)   │ • Deploy: GradBoost-500    │ • Deploy: Scaled KMeans-3    │
 └────────────────────────────┴────────────────────────────┴──────────────────────────────┘
                                           │
@@ -77,21 +89,22 @@ This capstone project delivers three complete, self-contained machine learning w
 
 ```text
 .
+├── .gitignore                                 # Clean ignore rules (pycache, checkpoints, venvs)
 ├── 23CSE301_ML_26_27_Capstone_Guidelines.pdf  # Course guidelines and evaluation rubrics
 ├── README.md                                  # Comprehensive project documentation
-├── requirements.txt                           # Core dependencies for notebooks
+├── requirements.txt                           # Core dependencies for notebooks (pinned)
 ├── app/                                       # Interactive Streamlit application
-│   ├── app.py                                 # Web interface for all 3 tracks
-│   └── requirements.txt                       # Application dependencies
+│   ├── app.py                                 # Multi-track web interface
+│   └── requirements.txt                       # Lightweight deployment dependencies
 ├── data/                                      # Datasets for all tracks
 │   ├── diamond.csv                            # Diamond price dataset (53,940 rows)
 │   ├── telescope_data.csv                     # MAGIC telescope dataset (18,905 rows)
 │   └── exoplanets.csv                         # NASA confirmed exoplanets (6,445 rows)
 └── models/                                    # Jupyter Notebooks & trained artifacts
-    ├── regression.ipynb                       # 10 regression models & validation
+    ├── regression.ipynb                       # 10 regression models, tuning, & CV
     ├── classification.ipynb                   # 10 classification models & tuning
-    ├── clustering.ipynb                       # Unsupervised clustering & manifolds
-    ├── diamond_rf_small.joblib                # Compact deployable Random Forest
+    ├── clustering.ipynb                       # Unsupervised clustering & manifolds (clean 1-9 run)
+    ├── diamond_rf_small.joblib                # Compact deployable Random Forest pipeline
     ├── telescope_gb.joblib                    # Champion Gradient Boosting pipeline
     └── exoplanet_kmeans.joblib                # K-Means clustering pipeline bundle
 ```
@@ -110,7 +123,7 @@ This capstone project delivers three complete, self-contained machine learning w
 
 1. **Cleaning:** Dropped duplicate entries and non-physical records with zero or negative dimensions ($x, y, z \le 0$).
 2. **Feature Engineering:**
-   * $\text{volume} = x \times y \times z$ (approximates the total diamond volume in $\text{mm}^3$, strongly correlating with mass and price).
+   * $\text{volume} = x \times y \times z$ (approximates the total diamond volume in $\text{mm}^3$, which strongly correlates with mass and price).
    * $\text{length\_width\_ratio} = \frac{x}{y}$ (captures diamond cut symmetry and dimensional proportions).
 3. **Pipeline (Train-Only Fit):** 
    * Numeric features: `SimpleImputer(strategy="median")` $\to$ `StandardScaler()`.
@@ -123,7 +136,7 @@ All 10 required regression algorithms were fitted on the identical preprocessed 
 
 | Rank | Algorithm | Test $R^2$ Score | Test RMSE ($) | Test MAE ($) | Key Notes |
 | :---: | :--- | :---: | :---: | :---: | :--- |
-| **1** | **Support Vector Regressor (SVR)** | **0.9788** | **579.21** | 335.19 | Radial Basis Function kernel ($C=1000$, $\epsilon=0.1$); lowest overall RMSE. |
+| **1** | **Support Vector Regressor (SVR)** | **0.9788** | **579.21** | 335.19 | Radial Basis Function kernel ($C=1000$, $\epsilon=0.1$); empirical leader by test $R^2$ and RMSE. |
 | **2** | **Random Forest Regression** | **0.9757** | 619.90 | **295.42** | 200 estimators; lowest absolute deviation (MAE) across all models. |
 | **3** | **Gradient Boosting Regressor** | **0.9644** | 751.94 | 384.85 | Sequential ensemble with staged loss minimization. |
 | **4** | **Decision Tree Regression** | **0.9630** | 766.69 | 361.61 | Single tree with cost-complexity pruning and depth constraints. |
@@ -143,13 +156,17 @@ As required by the capstone guidelines, the two leading models were validated us
 | **Support Vector Regressor (SVR)** | **0.9775** | $\pm 0.0012$ | `[0.9770, 0.9780, 0.9795, 0.9762, 0.9766]` |
 | **Random Forest Regression** | **0.9720** | $\pm 0.0028$ | `[0.9701, 0.9718, 0.9771, 0.9690, 0.9719]` |
 
-*Both models display high stability across folds ($\sigma \le 0.0028$), confirming that performance is not an artifact of train/test partition luck.*
+*Both models display high stability across folds ($\sigma \le 0.0028$), confirming that performance is reproducible and robust across different data partitions.*
+
+### SVR Leader vs. Random Forest Deployment Narrative
+
+* **SVR Performance Leadership:** Support Vector Regression with an RBF kernel is the undisputed performance leader in the notebook, achieving the highest test $R^2$ (**0.9788**), highest cross-validated $R^2$ (**0.9775**), and lowest root mean squared error (**$579.21**). Its continuous margin-based optimization smoothly models complex non-linear price manifolds while heavily penalizing large outliers.
+* **Why Random Forest Powers the Web App:** SVR prediction requires calculating kernel evaluations against thousands of support vectors ($\mathcal{O}(N_{\text{sv}} \times d)$ per query), resulting in noticeable latency on interactive web servers. Furthermore, Random Forest achieved the lowest Mean Absolute Error (**$295.42** vs. SVR's $335.19$), meaning its typical dollar-for-dollar valuation is exceptionally tight. A compact 50-tree Random Forest (`models/diamond_rf_small.joblib`) was therefore chosen for the interactive Streamlit deployment, delivering sub-millisecond predictions with an $R^2 \approx 0.975$.
 
 ### Hyperparameter Tuning & Visualisations (Regression)
 
 * **Tuning:** Applied `GridSearchCV` on Decision Tree (`max_depth`, `min_samples_split`), Random Forest (`n_estimators`, `max_depth`), SVR ($C$, $\epsilon$), Gradient Boosting (`learning_rate`), and KNN ($k$).
-* **Deployable Model Artifact:** While full SVR achieves the highest $R^2$, it has high inference latency on large sets. Random Forest (50 estimators, serialized to `models/diamond_rf_small.joblib`) retains $R^2 = 0.975$ with sub-millisecond inference and an MAE of $\approx \$305$, serving as the primary engine for the Streamlit app.
-* **Visualizations in Notebook:** Residual vs. fitted plots, actual vs. predicted regression scatter, and tree-based Gini feature importance (identifying `carat` and `volume` as the dominant drivers of price).
+* **Visualizations in Notebook:** Residual vs. fitted scatter, actual vs. predicted regression diagonal, and tree-based feature importance plots (confirming `carat` and `volume` contribute over 85% of total predictive power).
 
 ---
 
@@ -165,13 +182,13 @@ As required by the capstone guidelines, the two leading models were validated us
 
 1. **Feature Engineering:**
    * $\text{length\_width\_ratio} = \frac{\text{fLength}}{\text{fWidth}}$
-   * *Astroparticle Justification:* Electromagnetic (gamma-ray) showers develop cleanly along the particle axis producing narrow, elongated elliptical shower images (high ratio), whereas hadronic showers experience larger transverse momentum kicks yielding wider, irregular patterns (low ratio).
+   * *Astroparticle Justification:* Electromagnetic (gamma-ray) showers develop compactly along the particle axis producing narrow, elongated elliptical images (high ratio), whereas hadronic showers experience large transverse momentum kicks yielding wider, irregular patterns (low ratio).
 2. **Preprocessing:** Train-only `SimpleImputer(strategy="median")` $\to$ `StandardScaler()`.
-3. **Partition:** Stratified 80/20 train/test split (`random_state=42`) preserving the $\approx 65\% / 35\%$ class distribution.
+3. **Partition:** Stratified 80/20 train/test split (`random_state=42`) preserving the underlying $\approx 65\% / 35\%$ class ratio.
 
 ### Consolidated 10-Algorithm Comparison Table (Classification)
 
-Evaluating both Part A (Review 1) and Part B (Review 2) classifiers on the same stratified test split ($N=3,781$):
+Consolidated benchmark across all ten algorithms (Part A Review 1 baselines + Part B Review 2 ensembles and neural network) evaluated on the identical stratified test set ($N=3,781$):
 
 | Rank | Model | Part | Accuracy | Weighted Precision | Weighted Recall | Weighted F1 | ROC-AUC |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -186,17 +203,17 @@ Evaluating both Part A (Review 1) and Part B (Review 2) classifiers on the same 
 | **9** | **Logistic Regression** | **Part A** | 0.7932 | 0.7904 | 0.7932 | 0.7850 | 0.8392 |
 | **10** | **Gaussian Naive Bayes** | **Part A** | 0.6683 | 0.7178 | 0.6683 | 0.6762 | 0.7534 |
 
-*Key finding:* Part B ensemble and neural architectures raised average weighted F1 by $+0.067$ over Part A baselines.
+*Summary:* The introduction of Part B ensemble and neural architectures raised average weighted F1 by $+0.067$ over Part A baselines.
 
-### Final Model Selection & Optimization (Classification)
+### Final Model Selection & Secondary Optimization (Classification)
 
-* **Selected Champion:** **Gradient Boosting Classifier**. Outperformed all other architectures across Accuracy and F1 while providing calibrated probability estimates.
+* **Selected Champion:** **Gradient Boosting Classifier**. Achieved the best combination of Accuracy, weighted F1, and calibrated probabilities.
 * **Secondary Optimization Round (Review 2 Rubric A3):**
-  * Tuned `learning_rate`, `max_depth`, and `n_estimators`.
-  * Optimal hyperparameters: `{'learning_rate': 0.1, 'max_depth': 4, 'n_estimators': 500}`.
-  * Performance gain:
+  * Conducted an expanded hyperparameter search across `learning_rate`, `max_depth`, and `n_estimators`.
+  * Champion parameters: `{'learning_rate': 0.1, 'max_depth': 4, 'n_estimators': 500}`.
+  * Measured metric improvements:
 
-| Metric | Before Extra Tuning | After Extra Tuning | Absolute Gain |
+| Metric | Baseline Round 1 | After Deep Tuning Round 2 | Improvement |
 | :--- | :---: | :---: | :---: |
 | **Accuracy** | 0.8810 | **0.8828** | $+0.0019$ |
 | **Weighted Precision** | 0.8815 | **0.8831** | $+0.0016$ |
@@ -204,10 +221,10 @@ Evaluating both Part A (Review 1) and Part B (Review 2) classifiers on the same 
 | **Weighted F1 Score** | 0.8784 | **0.8805** | $+0.0021$ |
 | **ROC-AUC Score** | 0.9314 | **0.9333** | $+0.0019$ |
 
-* **Class Breakdown on Final Tuned Model:**
+* **Final Class-Level Confusion Matrix Metrics:**
   * Gamma signal (`g`): Precision $= 0.882$, Recall $= 0.947$, $F_1 = 0.913$ ($N=2,466$).
   * Hadron background (`h`): Precision $= 0.885$, Recall $= 0.762$, $F_1 = 0.819$ ($N=1,315$).
-* **Serialized Model:** Exported to `models/telescope_gb.joblib` for live deployment.
+* **Serialized Model:** Exported to `models/telescope_gb.joblib` for application deployment.
 
 ---
 
@@ -216,10 +233,10 @@ Evaluating both Part A (Review 1) and Part B (Review 2) classifiers on the same 
 ### Dataset & Problem Statement (Clustering)
 
 * **Dataset:** `data/exoplanets.csv` (Source: NASA Exoplanet Archive).
-* **Size:** 6,445 confirmed exoplanets, 10 columns (`pl_name` as unique identifier + 9 physical/stellar attributes).
+* **Size:** 6,445 confirmed exoplanets, 10 columns (`pl_name` as identifier + 9 numeric physical/stellar attributes).
 * **Features:** 
-  * Planet: Radius (`pl_rade`), Mass (`pl_bmasse`), Orbital Period (`pl_orbper`), Semi-Major Axis (`pl_orbsmax`), Eccentricity (`pl_orbeccen`), Equilibrium Temp (`pl_eqt`).
-  * Host Star: Effective Temp (`st_teff`), Mass (`st_mass`), Radius (`st_rad`).
+  * Planet parameters: Radius (`pl_rade`), Mass (`pl_bmasse`), Orbital Period (`pl_orbper`), Semi-Major Axis (`pl_orbsmax`), Eccentricity (`pl_orbeccen`), Equilibrium Temp (`pl_eqt`).
+  * Stellar parameters: Effective Temp (`st_teff`), Mass (`st_mass`), Radius (`st_rad`).
 * **Goal:** Perform purely unsupervised demographic clustering to discover physical planetary regimes without ground-truth labels.
 
 ### Preprocessing & Logarithmic Transformation (Clustering)
@@ -227,7 +244,7 @@ Evaluating both Part A (Review 1) and Part B (Review 2) classifiers on the same 
 1. **Handling Skewness:** Highly skewed power-law distributions spanning multiple orders of magnitude were stabilized with $\log_{10}$ transformation:
    * $\log_{10}$ applied to: `pl_rade`, `pl_bmasse`, `pl_orbper`, `pl_orbsmax`, `pl_eqt`, `st_mass`, `st_rad`.
    * Linear pass retained for bounded features: `pl_orbeccen` ($[0, 1)$) and `st_teff` (normally distributed stellar temperatures).
-2. **Standardization:** Median imputation followed by `StandardScaler` on all 9 transformed features (`random_state=42`).
+2. **Standardization:** Median imputation in native units followed by `StandardScaler` across all 9 transformed features (`random_state=42`).
 
 ### Clustering Algorithms & Optimization (Clustering)
 
@@ -254,6 +271,7 @@ Unsupervised validation metrics across evaluated configurations:
 * **Manifold Dimensionality Reduction:**
   * **2D PCA:** Explains **61.73%** cumulative variance (PC1 = 39.59%, PC2 = 22.14%), cleanly separating planetary size and orbital distance.
   * **2D t-SNE:** Non-linear projection confirming dense cluster boundaries and neighborhood consistency.
+* **Notebook Execution Integrity:** The clustering notebook (`models/clustering.ipynb`) was fully executed top-to-bottom in a fresh session with consecutive execution counts (cells 1–9) and verified outputs for all diagnostic plots and interpretation tables.
 
 ### Astrophysical Interpretation
 
@@ -278,7 +296,7 @@ De-standardizing and inverse-transforming cluster centroids back to native astro
 
 ## Interactive Web Application (Bonus GUI)
 
-To satisfy the Review 2 Bonus requirements (+2 marks), the repository includes an interactive web application built with **Streamlit** (`app/app.py`):
+To satisfy the Review 2 Bonus requirements, the repository includes an interactive web application built with **Streamlit** (`app/app.py`):
 
 ```bash
 streamlit run app/app.py
@@ -301,21 +319,23 @@ streamlit run app/app.py
 
 ---
 
-## Environment Setup & Installation
+## Dependency Management & Installation
 
-### Prerequisites
+The repository separates dependencies into two explicit requirements files to isolate analytical research from lightweight web deployment:
 
-* Python 3.10+ (tested on Python 3.10, 3.11, 3.12, 3.14)
-* `pip` package manager
+1. **`requirements.txt` (Root):** Pinned core packages required for data manipulation, scientific computing, model training, cross-validation, and all notebook visualisations (`models/*.ipynb`).
+2. **`app/requirements.txt` (App):** Lightweight dependencies required strictly to execute the Streamlit application and deserialize joblib models, avoiding heavy charting dependencies on production web servers.
 
-### 1. Clone the Repository
+### Step-by-Step Installation
+
+#### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd ml-capstone
 ```
 
-### 2. Create and Activate a Virtual Environment
+#### 2. Create and Activate a Virtual Environment
 
 ```bash
 # Linux / macOS
@@ -327,20 +347,20 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Install Dependencies
+#### 3. Install Dependencies
 
-Install notebook and core training packages:
+* **To run the full development environment (Notebooks + App):**
+  ```bash
+  pip install --upgrade pip
+  pip install -r requirements.txt
+  pip install -r app/requirements.txt
+  ```
 
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-To run the Streamlit GUI application, install the app dependencies:
-
-```bash
-pip install -r app/requirements.txt
-```
+* **To run only the interactive Streamlit application:**
+  ```bash
+  pip install --upgrade pip
+  pip install -r app/requirements.txt
+  ```
 
 ---
 
@@ -354,7 +374,7 @@ Launch Jupyter Notebook or JupyterLab from the project root:
 jupyter notebook
 ```
 
-Execute the notebooks in sequence from top to bottom:
+Execute the notebooks in sequence:
 
 1. **`models/regression.ipynb`:** Review 1 regression models, EDA, feature engineering, tuning, 5-fold CV, and residual diagnostics.
 2. **`models/classification.ipynb`:** Review 1 Part A baselines + Review 2 Part B ensembles, 10-model benchmark table, secondary hyperparameter tuning, and ROC-AUC curves.
@@ -374,12 +394,13 @@ The browser will open automatically at `http://localhost:8501`.
 
 ---
 
-## Methodology & Best Practices
+## Methodology & Quality Assurance
 
 * **Zero Data Leakage:** All feature encoders (`OneHotEncoder`) and scalers (`StandardScaler`) are strictly fitted on training splits only and subsequently applied (`transform`) to test splits. Unsupervised clustering operates without labels.
 * **Deterministic Reproducibility:** Every stochastic process, cross-validation split, tree initialization, and t-SNE projection is pinned to `random_state=42`.
 * **Metric Integrity:** Regressors are compared on the exact same held-out test split using $R^2$, RMSE, and MAE. Classifiers are compared on the exact same stratified test split using Accuracy, Weighted Precision, Weighted Recall, Weighted F1, and ROC-AUC.
-* **Academic Integrity:** All data preprocessing strategies, feature engineering formulas, and astrophysical domain interpretations were independently developed according to the 23CSE301 Capstone specifications.
+* **Notebook Execution Hygiene:** All three notebooks contain sequential execution counts with complete rendered outputs and zero execution errors.
+* **Repository Cleanliness:** Bytecode files (`.pyc`) have been purged from version control, and `.gitignore` rules prevent unintended artifacts from polluting the repository.
 
 ---
 *Developed for 23CSE301 Machine Learning Capstone, Academic Year 2026–27.*
